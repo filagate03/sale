@@ -1,0 +1,221 @@
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>AI Seller · SaaS</title>
+  <style>
+    :root{ --bg:#0A0F14; --card:#0F1622; --muted:#9aa4b2; --accent:#22c55e; --border:#233046; --text:#eef2ff; }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial}
+    header{padding:20px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:rgba(10,15,20,.9);backdrop-filter: blur(8px)}
+    h1{margin:0 0 6px;font-size:20px}
+    main{display:grid;grid-template-columns:420px 1fr;gap:16px;padding:16px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;box-shadow:0 6px 20px rgba(0,0,0,.25);transition:transform .2s ease}
+    .card:hover{transform:translateY(-1px)}
+    label{font-size:12px;color:var(--muted);display:block;margin:8px 0 6px}
+    input,select,textarea,button{width:100%;padding:11px 12px;border-radius:12px;border:1px solid var(--border);background:#0b1220;color:var(--text);outline:none;transition:border-color .15s ease, box-shadow .15s ease}
+    input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(34,197,94,.2)}
+    button{background:#1f2937;border-color:#1f2937;font-weight:600;cursor:pointer}
+    button.primary{background:var(--accent);border-color:var(--accent);color:#0b1220}
+    button[disabled]{opacity:.6;cursor:not-allowed}
+    textarea{min-height:100px}
+    table{width:100%;border-collapse:collapse;margin-top:8px}
+    th,td{border-bottom:1px solid var(--border);padding:8px;font-size:14px}
+    .row{display:flex;gap:8px;flex-wrap:wrap}
+    .muted{color:var(--muted);font-size:12px}
+    .pill{display:inline-block;background:#0d1322;border:1px solid var(--border);border-radius:999px;padding:4px 10px;font-size:12px;color:var(--muted)}
+    #toast{position:fixed;right:16px;bottom:16px;display:flex;flex-direction:column;gap:8px;z-index:1000}
+    .toast{background:#0d1322;border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.3);animation:pop .2s ease}
+    @keyframes pop{from{transform:translateY(6px);opacity:0}to{transform:translateY(0);opacity:1}}
+    .spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>AI Seller · SaaS</h1>
+    <div class="muted">Публичный сервис. Регистрируйся, добавляй своего бота и ключ OpenAI. Всё на твоих ключах.</div>
+  </header>
+
+  <main>
+    <section class="card">
+      <h3>1) Подключение (авто)</h3>
+      <div class="muted">Можно подтянуть Supabase URL и anon key прямо с сервера.</div>
+      <label>Supabase URL</label><input id="sbUrl">
+      <label>Supabase anon key</label><input id="sbAnon">
+      <div class="row" style="margin-top:8px"><button id="saveConn" class="primary">Сохранить</button><button id="loadConn">Загрузить с сервера</button></div>
+      <div class="muted" id="connNote" style="margin-top:6px">Статус: не подключено</div>
+
+      <h3 style="margin-top:18px">2) Регистрация / вход</h3>
+      <label>Email</label><input id="email" type="email" placeholder="you@example.com">
+      <label>Пароль</label><input id="password" type="password" placeholder="••••••••">
+      <div class="row" style="margin-top:8px"><button id="register">Зарегистрироваться</button><button id="login" class="primary">Войти</button></div>
+      <div id="auth" class="muted" style="margin-top:6px">не авторизован</div>
+
+      <h3 style="margin-top:18px">3) Агент</h3>
+      <label>Agent ID</label><input id="a_id" placeholder="coach">
+      <label>Название</label><input id="a_name" placeholder="Coach">
+      <div class="row"><div style="flex:1"><label>Model</label><input id="a_model" value="gpt-5-nano"></div><div style="flex:1"><label>Timezone</label><input id="a_tz" value="Europe/Amsterdam"></div></div>
+      <label>System prompt</label><textarea id="a_prompt">Ты ИИ-продавец. Пиши обычным текстом, без JSON. Не повторяй вопросы. После слота и контакта подтверждай и заверши.</textarea>
+      <label>Intent keywords</label><input id="a_kw" value="записаться, звонок, консультация, встреча, заявка">
+
+      <h4 style="margin-top:12px">Твои ключи (хранятся зашифрованно на сервере)</h4>
+      <label>Telegram bot token</label><input id="a_token" placeholder="123:ABC">
+      <label>OpenAI API key</label><input id="a_openai" placeholder="sk-...">
+
+      <label>Manager chat id (опционально)</label><input id="a_manager" placeholder="123456789">
+
+      <h4 style="margin-top:12px">Интеграции (опционально)</h4>
+      <label>Sheets webhook URL</label><input id="a_sheets" placeholder="https://script.google.com/macros/s/APP/exec">
+      <label>Calendar webhook URL</label><input id="a_calendar" placeholder="https://script.google.com/macros/s/APP/exec">
+      <div class="row"><div style="flex:1"><label>CRM mode</label>
+        <select id="a_crm_mode"><option value="off">off</option><option value="generic">generic</option></select></div>
+        <div style="flex:2"><label>CRM webhook URL</label><input id="a_crm" placeholder="https://crm.example.com/lead"></div>
+      </div>
+
+      <div class="row" style="margin-top:8px">
+        <button id="saveAgent" class="primary">Сохранить/Обновить агента</button>
+        <button id="listAgents">Мои агенты</button>
+      </div>
+
+      <h4 style="margin-top:12px">Вебхук Telegram</h4>
+      <div class="muted">Нужно один раз. Телеграм будет слать сообщения в твой обработчик.</div>
+      <label>Публичный URL сайта</label><input id="publicBase" placeholder="https://mysite.netlify.app">
+      <div class="row" style="margin-top:8px"><button id="setWebhook">Поставить вебхук</button></div>
+    </section>
+
+    <section class="card">
+      <h3>Статус</h3>
+      <div class="muted">Здесь будут агенты и лиды.</div>
+
+      <h3 style="margin-top:12px">Мои агенты</h3>
+      <table id="agentsTbl"><thead><tr><th>ID</th><th>Имя</th><th>Модель</th><th>Таймзона</th><th>Manager</th><th>Создан</th></tr></thead><tbody></tbody></table>
+
+      <h3 style="margin-top:16px">Лиды</h3>
+      <div class="muted">Видишь только свои.</div>
+      <table id="leadsTbl"><thead><tr><th>Когда</th><th>Agent</th><th>Чат</th><th>Контакт</th><th>User</th></tr></thead><tbody></tbody></table>
+    </section>
+  </main>
+
+  <div id="toast"></div>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2.43.1/dist/umd/supabase.min.js"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const state = { supa:null, token:null };
+
+    function toast(msg){ const t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.getElementById('toast').appendChild(t); setTimeout(()=>t.remove(), 4000); }
+    function btn(b, loading){ if (!b) return; if (loading){ b.setAttribute('disabled',''); b.dataset._txt=b.textContent; b.innerHTML='<span class="spinner"></span> ' + (b.dataset.label||b.textContent); } else { b.removeAttribute('disabled'); if (b.dataset._txt) b.textContent=b.dataset._txt; } }
+
+    async function loadServerConfig(){
+      try{ const r = await fetch('/config.json',{cache:'no-store'}); const j = await r.json(); if (j.supabase_url) $('sbUrl').value=j.supabase_url; if (j.supabase_anon_key) $('sbAnon').value=j.supabase_anon_key; if (j.supabase_url && j.supabase_anon_key) { localStorage.setItem('sb_url',j.supabase_url); localStorage.setItem('sb_anon',j.supabase_anon_key); $('connNote').textContent='Статус: подключено'; } }catch{}
+    }
+    document.getElementById('loadConn').onclick = ()=>{ loadServerConfig().then(()=>toast('Загрузили конфиг')); };
+    (function init(){ document.getElementById('sbUrl').value=localStorage.getItem('sb_url')||''; document.getElementById('sbAnon').value=localStorage.getItem('sb_anon')||''; loadServerConfig(); })();
+
+    document.getElementById('saveConn').onclick = ()=>{ localStorage.setItem('sb_url',document.getElementById('sbUrl').value.trim()); localStorage.setItem('sb_anon',document.getElementById('sbAnon').value.trim()); document.getElementById('connNote').textContent='Статус: подключено'; toast('Сохранено'); };
+
+    function ensureSupa(){
+      if (state.supa) return state.supa;
+      const url = document.getElementById('sbUrl').value.trim(); const anon = document.getElementById('sbAnon').value.trim();
+      if (!url || !anon){ toast('Укажи Supabase URL и anon key'); return null; }
+      state.supa = window.supabase.createClient(url, anon);
+      return state.supa;
+    }
+
+    document.getElementById('register').onclick = async (e)=>{
+      const b=e.target; btn(b,true); try{
+        const s = ensureSupa(); if (!s) return;
+        const { error } = await s.auth.signUp({ email: document.getElementById('email').value.trim(), password: document.getElementById('password').value.trim() });
+        document.getElementById('auth').textContent = error ? error.message : 'Регистрация ок. Жми Войти.';
+        toast(error ? 'Ошибка: '+error.message : 'Регистрация ок');
+      } finally { btn(b,false); }
+    };
+
+    document.getElementById('login').onclick = async (e)=>{
+      const b=e.target; btn(b,true); try{
+        const s = ensureSupa(); if (!s) return;
+        const { data, error } = await s.auth.signInWithPassword({ email: document.getElementById('email').value.trim(), password: document.getElementById('password').value.trim() });
+        if (error){ document.getElementById('auth').textContent = error.message; toast('Ошибка: '+error.message); return; }
+        document.getElementById('auth').textContent = 'Вошел как '+(data?.user?.email||'');
+        const sess = await s.auth.getSession(); state.token = sess.data.session.access_token; toast('Вход выполнен');
+        await refreshAgents(); await refreshLeads();
+      } finally { btn(b,false); }
+    };
+
+    async function callAdmin(action, payload){
+      const res = await fetch('/.netlify/functions/admin-api', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+(state.token||'') },
+        body: JSON.stringify({ action, ...payload })
+      });
+      if (res.status === 401){ toast('Вы не авторизованы. Зайди заново.'); throw new Error('unauthorized'); }
+      const txt = await res.text();
+      try{ return JSON.parse(txt); }catch{ return { raw: txt }; }
+    }
+
+    document.getElementById('saveAgent').onclick = async (e)=>{
+      const b=e.target; btn(b,true); try{
+        if (!state.token){ toast('Сначала войди'); return; }
+        const a = {
+          id: document.getElementById('a_id').value.trim(),
+          name: document.getElementById('a_name').value.trim(),
+          model: document.getElementById('a_model').value.trim(),
+          system_prompt: document.getElementById('a_prompt').value.trim(),
+          timezone: document.getElementById('a_tz').value.trim(),
+          intent_keywords: document.getElementById('a_kw').value.trim(),
+          manager_chat_id: document.getElementById('a_manager').value.trim(),
+          sheets_webhook_url: document.getElementById('a_sheets').value.trim(),
+          calendar_webhook_url: document.getElementById('a_calendar').value.trim(),
+          crm_mode: document.getElementById('a_crm_mode').value,
+          crm_webhook_url: document.getElementById('a_crm').value.trim(),
+          bot_token: document.getElementById('a_token').value.trim(),
+          openai_key: document.getElementById('a_openai').value.trim()
+        };
+        const r = await callAdmin('upsert_agent', { agent: a });
+        toast(r?.ok ? 'Сохранено' : 'Ответ: ' + JSON.stringify(r));
+        await refreshAgents();
+      } finally { btn(b,false); }
+    };
+
+    document.getElementById('listAgents').onclick = ()=> refreshAgents();
+
+    async function refreshAgents(){
+      if (!state.token) return;
+      const r = await callAdmin('list_agents', {});
+      const arr = r?.agents || [];
+      const tb = document.getElementById('agentsTbl').querySelector('tbody'); tb.innerHTML = '';
+      for (const a of arr){
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td>'+a.id+'</td><td>'+ (a.name||'') +'</td><td>'+ (a.model||'') +'</td><td>'+ (a.timezone||'') +'</td><td>'+ (a.manager_chat_id||'') +'</td><td>'+ new Date(a.created_at).toLocaleString() +'</td>';
+        tb.appendChild(tr);
+      }
+    }
+
+    document.getElementById('setWebhook').onclick = async (e)=>{
+      const b=e.target; btn(b,true); try{
+        if (!state.token){ toast('Сначала войди'); return; }
+        const agent_id = document.getElementById('a_id').value.trim();
+        const public_base = document.getElementById('publicBase').value.trim();
+        if (!agent_id || !public_base){ toast('Нужны agent_id и публичный URL'); return; }
+        const r = await callAdmin('set_webhook', { agent_id, public_base });
+        toast('Ответ Telegram: ' + JSON.stringify(r).slice(0,300));
+      } finally { btn(b,false); }
+    };
+
+    async function refreshLeads(){
+      const s = ensureSupa(); if (!s) return;
+      const { data, error } = await s.from('leads').select('created_at,agent_id,chat_id,username,contact').order('created_at',{ascending:false}).limit(200);
+      const tb = document.getElementById('leadsTbl').querySelector('tbody'); tb.innerHTML = '';
+      if (error) { toast('Ошибка чтения лидов'); console.log(error); return; }
+      for (const row of data){
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td>'+ new Date(row.created_at).toLocaleString() +'</td><td>'+row.agent_id+'</td><td>'+row.chat_id+'</td><td>'+row.contact+'</td><td>'+row.username+'</td>';
+        tb.appendChild(tr);
+      }
+    }
+  </script>
+</body>
+</html>
