@@ -1,0 +1,16 @@
+{
+  "name": "ai-seller-saas",
+  "private": true,
+  "type": "module",
+  "version": "2.0.0",
+  "scripts": {
+    "start": "netlify dev",
+    "build": "echo 'no build'"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.43.1"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.38.0"
+  }
+}
